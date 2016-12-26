@@ -1,0 +1,147 @@
+1.2 (04/99)
+-----------
+- added new FTP command FTP::Append to append local files to
+  remote files
+- added TkCon support to make FTP::List inside TkCon more readable    
+- in some strange cases ftp_lib overlaps the state machine,
+  to prevent this the state handler disables fileevents on 
+  control socket a the beginning and enables it again at the end
+  (this failure comes with an earlier release of tkcon, it 
+  is only a debugging feature now and commented)
+- store the example files in a separatly directory 
+
+1.12 (02/99)
+-----------
+- Disabled remote Abort command, it doesn't work
+- insert an internal CloseDataConn command instaed of Abort
+- Get/Reget: create local file only if the remote file really
+  exist
+- fix major bug for passive mode that ftp_lib blocks in every cases
+  if file or directory doesn't exist at the remote machine,
+  THANKS to Brian Lalo <blalor@hcirisc.cs.binghamton.edu> for his
+  investigation
+- added current namespace prefix to InitDataConn procedure
+
+
+1.11 (01/99)
+-----------
+- changed return values of the FTP::Quote command, sent back the
+  string it received instead of any parsing 
+  THANKS Keith Vetter <kvetter@us.oracle.com> for his patch
+- improved buffer mechanism in StateHandler, buffer represents 
+  the whole received data
+- VERBOSE variable controlled output now will be handled by the
+  package not by the application
+- new online HTML help files are available under the directory docs
+
+1.1 (11/98)
+-----------
+- ftp_lib now can also operate in the passive data transfer mode,
+  added "PASV" ability for every command that uses data connection.
+- improved procedure return codes for a better error handling
+- restore correct type after switching to ascii mode in FTP::List and
+  FTP::NList
+- insert a hook for using a graphical progress bar that shows the
+  elapsed time
+- added new command FTP::FileSize which gets the file size of the
+  file on the remote machine
+- FTP::Newer now is able to compare the modification date of a 
+  remote file with the date of any local file 
+- enabled DEBUG variable displays in additional the real FTP commands  
+  (old VERBOSE feature)
+- signification of the VERBOSE variable is changed, if enabled it shows
+  the responses from the remote server
+- allows to call FTP::Cd without any parameter 
+- include some examples in ftp_lib distribution
+  
+1.02 (05/98)
+-----------
+- fixed a little bug in FTP::Open that makes it not possible to use
+  this procedure in a proc (upvar #0 ..)
+
+1.01 (03/98)
+-----------
+- Non-Blocking I/O of the control channel doesn't work on Windows,
+  changed to block the I/O channel
+
+1.0 (03/98)
+-----------
+- complete redesign to handle timeouts after specified amount of 
+  time.
+- added new FTP command FTP::Quote for sending verbatim commands
+  to the FTP server
+  THANKS to Ron Zajac <Ron.Zajac.zajac@nt.com> for inspiration
+
+0.9 (02/98)
+-----------
+- uses only the highest-order digit of the 3-digit reply code for
+  switching in procedure StateHandler
+- added new FTP command FTP::ModTime to show the last 
+  modification time of a file on the remote machine.
+  THANKS to Bill Thorson <thorson@typhoon.atmos.colostate.edu>
+  for the patch
+- added new FTP command FTP::Newer to get remote file only
+  if it is newer than local file
+- DEBUG flag
+- VERBOSE flag
+- added two options for FTP::Open command:
+        -timeout seconds, sets up timeout
+        -blocksize size, writes "size" bytes at once
+- procedure DisplayMsg now is provided to display in different colors
+
+0.84 (02/98)
+-----------
+- FTP commands now runs only if control connection is available
+- changed ls-output, removed "total"-line and blank lines from
+  the list
+
+0.83 (02/98)
+-----------
+- changed the FTP::NList command to query data of empty directories
+- added new FTP command FTP::Reget to skip over big files after
+  broken file transfer
+  THANKS to Paulo da Silva <pdasilva@mail2.esoterica.pt> for help
+- specially interpretation of the 421 reply code ("Service
+  not available, closing control connection"), it is necessary
+  for reget
+  
+0.82 (12/97)
+-----------
+- added current namespace prefix to CopyNext procedure,
+  because of ftp_lib doesn't work correctly with tlc/tk8.0p2
+  
+0.81 (08/97)
+-----------
+- replaced tkwait with vwait, this allows only to use
+  tcl shell for FTP library
+
+0.8 (07/97)
+-----------
+- redesigned to support namespace
+- added simple installation program
+- modified to support the tcl package specification
+
+0.7 (06/97)
+-----------
+- changed to tcl/tk version 8.0
+- used the new fcopy command to transfer binary data
+
+0.6 (02/97)
+-----------
+- bugfix: close data socket after every data transfer
+- added the rename command
+
+0.5 (02/97)
+-----------
+- bugfixes
+- added directory manipulation commands
+
+0.4 (02/97)
+-----------
+- changed to tcl7.6/tk4.2
+- added put/get commands
+
+0.1 - 0.3 (01/97)
+-----------------
+- ???
+

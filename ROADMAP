@@ -1,0 +1,259 @@
+<!-- -*- mode: html; fill-column: 75; tab-width: 8; coding: iso-latin-1-unix -*- -->
+<HTML>
+<HEAD>
+<!-- $Id: Roadmap.html,v 1.2.2.2 2002/12/02 04:02:48 idiscovery Exp $ -->
+<TITLE>Tix Project Roadmap</TITLE>
+</HEAD>
+<BODY BGCOLOR="#ffffff" TEXT="#000000" LINK="#0000ff" VLINK="#800000" ALINK="#800080">
+<FONT FACE="Tahoma, Arial, Helvetica">
+
+<h2>Tix Project Roadmap</h2>
+
+This is a general list of features/improvements that we plan to put in
+future releases of Tix. For bug reports or detailed feature please
+visit the <a href="http://sourceforge.net/bugs/?group_id=5649"> Tix Bug
+Report page</a> at <a href="http://www.sourceforge.com"> SourceForge
+</a>. <p>
+
+<p>
+
+<table width="100%" border=0>
+
+<!---------------------------------------------------------------------->
+
+<tr>
+<td colspan="2">
+<b><p>Release 8.2.0:</b></DT><DD>
+</td>
+<td valign="bottom" width="100"> Status </td>
+</tr>
+<tr><td colspan=3><hr></td></tr>
+
+<tr>
+<td width="3"></td>
+<td>
+        <LI> Works with Tcl 8.3.3.
+</td>
+<td>done</td>
+</tr>
+
+<tr>
+<td width="3"></td>
+<td>
+        <LI> No conflict with other major Tcl extensions like itcl.
+</td>
+<td>done</td>
+</tr>
+
+<tr>
+<td width="3"></td>
+<td>
+        <LI> Accepts the Tcl stubs API, for any Tcl after 8.1.
+</td>
+<td>done</td>
+</tr>
+
+<tr>
+<td width="3"></td>
+<td>
+        <LI> Clean up any old junk - old DND, tixFileJoin.
+</td>
+<td>-</td>
+</tr>
+
+<tr>
+<td width="3"></td>
+<td>
+        <LI> Take a look through tools/ and docs/ for pre-8.0 relics.
+</td>
+<td>almost done</td>
+</tr>
+
+<tr>
+<td width="3"></td>
+<td>
+        <LI> Remove rarely used or experimental features such as tixWm.  
+</td>
+<td>-</td>
+</tr>
+
+<tr>
+<td width="3"></td>
+<td>
+        <LI> Stop excessive usage of the option database -- Tix 4.x
+             liked to set the widget defaults in its own way and makes
+             other mega-widget packages unhappy.
+</td>
+<td>done</td>
+</tr>
+
+<!---------------------------------------------------------------------->
+
+<tr>
+<td colspan="2">
+<b>&nbsp;<p>Release 8.2.1:</b></DT><DD>
+</td>
+<td valign="bottom"> Status </td>
+</tr>
+<tr><td colspan=3><hr></td></tr>
+
+<tr>
+<td width="3"></td>
+<td>
+        <LI> TEA compatible.
+</td>
+<td>done</td>
+</tr>
+
+<tr>
+<td width="3"></td>
+<td>
+        <LI> Update docs to match Tcl 8.x (e.g, revise the TixIntro.n
+             to put more emphasis in "package require" than the C init
+             function)
+</td>
+<td>in progress</td>
+</tr>
+
+<tr>
+<td width="3"></td>
+<td>
+        <LI> Works with Tcl 8.3.4.
+</td>
+<td>done</td>
+</tr>
+
+<!---------------------------------------------------------------------->
+
+<tr>
+<td colspan="2">
+<b>&nbsp;<p>Release 8.2.2: More bug fixes/Feature complete</b>
+</td>
+<td valign="bottom"> Status </td>
+</tr>
+<tr><td colspan=3><hr></td></tr>
+
+<tr>
+<td width="3"></td>
+<td>
+        <LI> Fix high-prio cleanups not fixed in Release 1 (bindings code).
+</td>
+<td>-</td>
+</tr>
+
+<tr>
+<td width="3"></td>
+<td>
+        <LI> Complete features in widgets such as Grid.
+</td>
+<td>-</td>
+</tr>
+
+<tr>
+<td width="3"></td>
+<td>
+        <LI> Programming Guide in LaTeX/HTML/PDF
+</td>
+<td>-</td>
+</tr>
+
+<!---------------------------------------------------------------------->
+
+<tr>
+<td colspan="2">
+<b>&nbsp;<p>Release 8.2.3: Performance</b>
+</td>
+<td valign="bottom"> Status </td>
+</tr>
+<tr><td colspan=3><hr></td></tr>
+
+<tr>
+<td width="3"></td>
+<td>
+        <LI> Enhance performance in HList, TList and Grid widgets.
+</td>
+<td>-</td>
+</tr>
+
+<tr>
+<td width="3"></td>
+<td>
+        <LI> Convert some C commands into ObjCmd's.
+</td>
+<td>-</td>
+</tr>
+
+<tr>
+<td width="3"></td>
+<td>
+        <LI> Bring Tix up to date with recent Tk developments to 
+             support Unicode and internationalization.
+</td>
+<td>in progress</td>
+</tr>
+
+<!---------------------------------------------------------------------->
+
+<tr>
+<td colspan="2">
+<b>&nbsp;<p>Release 8.3.0: Platform integration</b>
+</td>
+<td valign="bottom"> Status </td>
+</tr>
+<tr><td colspan=3><hr></td></tr>
+
+<tr>
+<td width="3"></td>
+<td>
+        <LI> Works with Tcl 8.4.
+	<LI> Possibly drop support for static compile with itcl.
+</td>
+<td>-</td>
+</tr>
+
+<tr>
+<td width="3"></td>
+<td>
+        <LI> Drag-and-drop (pending TkDnD integration in the core?)
+</td>
+<td>-</td>
+</tr>
+
+<!---------------------------------------------------------------------->
+
+<tr>
+<td colspan="2">
+<b>&nbsp;<p>Release 8.3.1: New features</b>
+</td>
+<td valign="bottom"> Status </td>
+</tr>
+<tr><td colspan=3><hr></td></tr>
+
+<tr>
+<td width="3"></td>
+<td>
+        <LI> Make the dirlist and dirtree widgets get their icons directly
+             from the registry under windows, or from the MIME type
+             under KDE or GNOME.
+</td>
+<td>-</td>
+</tr>
+
+<tr>
+<td width="3"></td>
+<td>
+        <LI> TEA2 compatible.
+</td>
+<td>-</td>
+</tr>
+
+
+</table>
+
+
+<hr>
+
+<a href=http://tix.sourceforge.net> Tix Home Page</a><br>
+</FONT>
+</BODY><HTML>
+

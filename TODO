@@ -1,0 +1,18 @@
+- examples from ZMQ Guide:
+
+  - flserver3, flclien3, flcliapi: with same problem as C version
+  - clonesrv6, clonecli6, clone
+
+- memory leak checks
+
+- multi threading
+
+- 4.0.1
+
+    zmq_ctx_shutdown (not yet in zeromq docs?)
+    zmq_send_const (won't add)
+
+    #define ZMQ_POLLITEMS_DFLT 16 (internal array size)
+
+    zmq_z85_encode (later, can't get libsodium to work for now)
+    zmq_z85_decode (later, can't get libsodium to work for now)
