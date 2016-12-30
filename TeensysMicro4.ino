@@ -18,6 +18,18 @@
 #define STATEDATAMSB 3
 #define STATEDATALSB 4
 #define STATEEND 5
+#define CODEACK '!'
+#define CODECLEAR ' '
+#define CODEBEGIN '<'
+#define CODEEND '>'
+#define CODECOMMENTBEGIN '('
+#define CODECOMMENTEND ')'
+#define CODELF 10
+#define CODECR 13
+#define CODEPOINT '.'
+#define CASEREGX 0xF0
+#define CASEREGY 0xF1
+#define CASEREGACC 0xF2
 
 // pin definitions
 int nLedPins[] = {8, 9, 10, 13};
@@ -45,6 +57,7 @@ int nPinOutput5 = 23;
 // serial variables
 char cChar = 0;
 char cCommand = 0;
+int nBuild = 0;
 int nBaud = 9600;
 int nCount = 0;
 int nEcho = 0;
@@ -53,12 +66,20 @@ int nState = 0;
 int nDataMsb = 0;
 int nDataLsb = 0;
 int nLedState = 0;
+int nDirect = OFF;
+int nMemoire = OFF;
+int nRegistre = ON;
+int nStep = 0;
 
 // micro variables
 #define MAXMEM 0x10 * 0x10
 int nMemory[MAXMEM];
 int nPage = 0;
 int nPc = 0;
+int nX = 0;
+int nY = 0;
+int nAcc = 0;
+int nFlag = 0;
 
 // local variables
 byte nPinStateIn = 0;
@@ -71,8 +92,13 @@ void messageClear(void);
 void toggleIn(int nPinNum);
 void toggleOut(int nPinNum);
 void clearMemory(void);
+void displayStep(void);
 void displayRegister(void);
 void displayMemory(void);
+void teston(void);
+void runProgram(void);
+void execIncrement(void);
+void execDecrement(void);
 
 void setup(void)
 {
@@ -142,25 +168,28 @@ int messageBuild(void)
   if (altSerial.available()) {
     cChar = (char)altSerial.read();
     altSerial.flush();
+    if (cChar == CODECOMMENTBEGIN) {
+      nBuild = 1; return 0;
+    }
+    else if (cChar == CODECOMMENTEND) {
+      nBuild = 0; return 0;
+    }
+    if (nBuild == 1) return 0;
     switch (cChar) {
-     case ' ':
-      messageClear();
-      break;
-     case 'z':
-     case '<':
+     case CODECLEAR:
+      messageClear(); break;
+     case CODEBEGIN:
       if (nState == OFF) nState = STATEBEGIN;
       if (nEcho == ON) altSerial.print(cChar);
       break; 
-     case 'x':
-     case '>':
+     case CODEEND:
       if (nState == STATEDATALSB) nState = STATEEND;
       if (nEcho == ON) altSerial.print(cChar);    
       break;
-     case 10: // lf
-      break;
-     case 13: // cr
-      //altSerial.println(""); altSerial.print('>'); 
-      break;
+     case CODEPOINT:
+      displayStep(); break;
+     case CODECR: 
+     case CODELF: break;
      default: // another
       if (nState == STATEBEGIN) {
         cCommand = cChar; nState = STATECOMMAND;
@@ -211,8 +240,7 @@ int messageBuild(void)
           nState = STATEDATALSB;
         }
       }
-      if (nEcho == ON) altSerial.print(cChar);
-      break;
+      if (nEcho == ON) altSerial.print(cChar); break;
     }
   }
   return nState;
@@ -221,268 +249,174 @@ int messageBuild(void)
 void loop(void)
 {
   int nTest = OFF;
-  if (nTest == ON) {
-    altSerial.printf("> ");    
-    while(1) {
-      if (altSerial.available()) {
-        cChar = altSerial.read();
-        altSerial.print(cChar);
-        toggleIn(ledPinIn);
-        toggleOut(ledPinOut);
-      }
-    }
-  }
+  if (nTest == ON) teston();
   if (messageBuild() == 5) {
     switch (cCommand) { // Gets the first word as a character
       case 'h': // Help
-      case '3':
-        help( ); messageClear();
-        break;
-      case 'd': // display memory
-      case '0':
-        displayMemory(); displayRegister(); messageClear();
-        break;
-      case 'e': // Write echo off or on
-      case '2': 
-        if (nDataLsb == 0) nEcho = OFF;
-        else {
-          if (nDataLsb == 1) nEcho = ON;
-        } 
-        messageClear(); altSerial.print('!'); 
-        break; 
-      case 'p': // page and pc
-      case '4':
-        nPage = nDataMsb; nPc = nDataLsb; messageClear(); altSerial.print('!');
-        break;      
-      case 'r': // Read pins (analog or digital)
-      case '5':
-        readpins( ); messageClear(); // Call the readpins function
-        break; // Break from the switch
+        help( ); messageClear(); altSerial.print(CODEACK); break;
+      case 'd': // Display memory
+        displayMemory(); displayRegister(); messageClear(); break;
+      case 'c': // Config
+        switch (nDataLsb) {
+          case 0: nEcho = OFF; break;
+          case 1: nEcho = ON; break;
+          case 2: nStep = OFF; break;
+          case 3: nStep = ON; break;
+          case 4: nDirect = OFF; break;
+          case 5: nDirect = ON; break;
+          default: break;  
+        }
+        messageClear(); altSerial.print(CODEACK); break; 
+      case 'n': // New program
+        clearMemory();
+        if (nDataMsb < 0x0F) nPage = nDataMsb;
+        else nPage = 0;
+        nPc = nDataLsb; messageClear(); altSerial.print(CODEACK); break;
+      case 'p': // Page and pc
+        if (nDataMsb < 0x0F) nPage = nDataMsb;
+        else nPage = 0;
+        nPc = nDataLsb; messageClear(); altSerial.print(CODEACK); break;   
+      case 's': // Store data
+        switch (nPage) {
+          case 0:
+            nMemory[0x00 + nDataMsb] = nDataLsb; break;
+          case 1:
+            nMemory[0x10 + nDataMsb]= nDataLsb; break;
+          case 2:
+            nMemory[0x20 + nDataMsb] = nDataLsb; break;  
+          case 3:
+            nMemory[0x30 + nDataMsb] = nDataLsb; break; 
+          case 4:
+            nMemory[0x40 + nDataMsb] = nDataLsb; break;
+          case 5:
+            nMemory[0x50 + nDataMsb] = nDataLsb; break;
+          case 6:
+            nMemory[0x60 + nDataMsb] = nDataLsb; break;
+          case 7:
+            nMemory[0x70 + nDataMsb] = nDataLsb; break;
+          case 8:
+            nMemory[0x80 + nDataMsb] = nDataLsb; break; 
+          case 9:
+            nMemory[0x90 + nDataMsb] = nDataLsb; break;   
+          case 10:
+            nMemory[0xA0 + nDataMsb] = nDataLsb; break; 
+          case 11:
+            nMemory[0xB0 + nDataMsb] = nDataLsb; break; 
+          case 12:
+            nMemory[0xC0 + nDataMsb] = nDataLsb; break; 
+          case 13:
+            nMemory[0xD0 + nDataMsb] = nDataLsb; break; 
+          case 14:
+            nMemory[0xE0 + nDataMsb] = nDataLsb; break;                                                                    
+          default: break;                     
+        }
+        messageClear(); altSerial.print(CODEACK); break;
+      case 'r': // run
+        runProgram(); messageClear(); altSerial.print(CODEACK); break;      
+      case 'u': // Read pins (analog or digital)
+        readpins( ); messageClear(); break;
       case 't': // Test card
-      case '6':
-        //if (nEcho == 1) messageSendChar('T'); // Echo what is being read
-        //while(1) test( );
-        messageClear(); altSerial.print('!');
-        break; 
+        messageClear(); altSerial.print(CODEACK); teston(); break; 
       case 'v': // Version
-      case '7':
-        altSerial.println("1.0"); messageClear(); altSerial.print('!');
-        break;      
+        altSerial.println("0.7"); messageClear(); altSerial.print(CODEACK); break;      
       case 'w': // Write pin
-      case '8':
-        //if (nEcho == 1) messageSendChar('W'); // Echo what is being read
-        writepin( ); messageClear(); altSerial.print('!'); // Call the writepin function
-        break;
+        writepin( ); messageClear(); altSerial.print(CODEACK); break;
       case 'l': // Toogle led
-      case '9':
         if (nLedState == OFF) {
           digitalWrite(nPinLed, HIGH); nLedState = ON;
         } 
         else {
           digitalWrite(nPinLed, LOW); nLedState = OFF;
         }  
-        messageClear(); altSerial.print('!');    
-        break;
+        messageClear(); altSerial.print(CODEACK); break;
       default: break;  
     }
   }
 }
 
-void readpins(void)
-{ // Read pins (analog or digital)
-  char cChr = 0;
-  switch (cChr) { // Gets the next word as a character
-    case 'a': // READ analog pin
-    case '1':
-      //messageSendInt(analogRead(nPinAnalog)); // Read pin 14
-      //;if (nEcho == 1) messageEnd( ); // Terminate the message being sent
-      break;  
-    case 'b': // READ button
-    case '2':  
-      //messageSendInt(digitalRead(nPinButton));
-      //if (nEcho == 1) messageEnd( ); // Terminate the message being sent
-      break;     
-    case 'd': // READ digital pins
-    case '3':
-      //for (char i = 0; i < 13; i++) {
-        //messageSendInt(digitalRead(i)); // Read pins 0 to 13
-      //}
-      //if (nEcho == 1) messageEnd( ); // Terminate the message being sent
-      break;
-    case 'l': // READ light
-    case '5':
-      //messageSendInt(analogRead(nPinLight));         
-      //if (nEcho == 1) messageEnd( ); // Terminate the message being sent 
-      break;  
-    case 's': // READ switch
-    case '7':   
-      //messageSendInt(digitalRead(nPinSwitch));
-      //if (nEcho == 1) messageEnd( ); // Terminate the message being sent
-      break;      
-    case 't': // READ temperature
-    case '8':
-      //messageSendInt(analogRead(nPinTemperature));          
-      //if (nEcho == 1) messageEnd( ); // Terminate the message being sent
-      break;       
-    default: break;
+void runProgram(void)
+{
+  int nOpcode = 0;
+  int nParam = 0;
+  int nLoop = 1;
+  while (nLoop == 1) {
+    nOpcode = nMemory[nPc]; nPc++;
+    nParam = nMemory[nPc]; nPc++;
+    switch (nPc) {
+      case 0x00: nPage = 0x00; break;
+      case 0x10: nPage = 0x01; break;
+      case 0x20: nPage = 0x02; break;
+      case 0x30: nPage = 0x03; break;
+      case 0x40: nPage = 0x04; break;
+      case 0x50: nPage = 0x05; break;
+      case 0x60: nPage = 0x06; break;
+      case 0x70: nPage = 0x07; break;
+      case 0x80: nPage = 0x08; break;
+      case 0x90: nPage = 0x09; break;
+      case 0xA0: nPage = 0x0A; break; 
+      case 0xB0: nPage = 0x0B; break;
+      case 0xC0: nPage = 0x0C; break;
+      case 0xD0: nPage = 0x0D; break;
+      case 0xE0: nPage = 0x0E; break;
+      case 0xF0: nPage = 0x00; altSerial.print('?'); break;                                                                             
+    }
+    // test nPc -> nPage + 1
+    switch (nOpcode) {
+      case 0x00: // code config
+        switch (nParam) {
+          case 0x00: break; // nop
+          case 0x01: execIncrement(); break; // increment
+          case 0x02: execDecrement(); break; // decrement
+          case 0x03: altSerial.print('C'); break; // call
+          case 0x04: altSerial.print('R'); break; // return
+          case 0x05: altSerial.print('Z'); break; // reset
+          case 0x06: nStep = OFF; break; // step off
+          case 0x07: nStep = ON; break; // step on
+          case 0x08: nDirect = ON; nMemoire = OFF; nRegistre = OFF; break; // mode direct
+          case 0x09: nMemoire = ON; nDirect = ON; nRegistre = OFF; break; // mode memory
+          case 0x0A: nRegistre = ON; nDirect = OFF; nMemoire = OFF; break; // mode register
+          case 0x0B: altSerial.print('?'); break;
+          case 0x0C: altSerial.print('?'); break;
+          case 0x0D: altSerial.print('?'); break;
+          case 0x0E: altSerial.print('?'); break;
+          case 0x0F: nLoop = 0; // end program
+          default: break;
+        }
+        break;
+      case 0x01: break; // addition
+      case 0x02: break; // substraction
+      default: break;
+    }
+    if (nStep == ON) displayStep();
   }
 }
 
-void writepin(void) 
-{ // Write pin
-  char cChr = 0;
-  int pin = 0;
-  int state = 0;
-  switch (cChr) { // Gets the next word as a character
-    case 'c': // WRITE count
-    case '0':
-      nCount++;
-      if (nCount > 9) nCount = 1;  
-      digitalWrite(nPinLed, LOW);
-      delay(500);
-      digitalWrite(nPinLed, HIGH);
-      delay(500);  
-      digitalWrite(nPinLed, LOW);     
-      break;
-    case 'a': // WRITE an analog pin
-    case '1':
-      //if (nEcho == 1) messageSendChar('A'); // Echo what is being read    
-      //pin = messageGetInt( ); // Gets the next word as an integer
-      //state = messageGetInt( ); // Gets the next word as an integer
-      pinMode(pin, OUTPUT); // Sets the state of the pin to an output
-      analogWrite(pin, state); // Sets the PWM of the pin 
-      //if (nEcho == 1) messageSendInt(state);
-      break; // Break from the switch 
-    case 'b': // WRITE a buzzer pin
-    case '2':
-      //if (nEcho == 1) messageSendChar('B'); // Echo what is being read    
-      //state = messageGetInt( ); // Gets the next word as an integer
-      pinMode(nPinBuzzerP, OUTPUT); // Sets the state of the pin to an output
-      digitalWrite(nPinBuzzerP, !state); // Sets the state of the pin HIGH (1) or LOW (0)
-      //if (nEcho == 1) messageSendInt(state);
-      break;     
-    case 'd': // WRITE a digital pin
-    case '3':
-      //if (nEcho == 1) messageSendChar('D'); // Echo what is being read    
-      //pin = messageGetInt( ); // Gets the next word as an integer
-      //state = messageGetInt( ); // Gets the next word as an integer
-      pinMode(pin, OUTPUT); // Sets the state of the pin to an output
-      digitalWrite(pin, state); // Sets the state of the pin HIGH (1) or LOW (0)
-      //if (nEcho == 1) messageSendInt(state);
-      break;
-    case 'g': // WRITE a led green pin
-    case '4':
-      //if (nEcho == 1) messageSendChar('G'); // Echo what is being read    
-      //state = messageGetInt( ); // Gets the next word as an integer
-      pinMode(nPinGreen, OUTPUT); // Sets the state of the pin to an output
-      digitalWrite(nPinGreen, !state); // Sets the state of the pin HIGH (1) or LOW (0)
-      //if (nEcho == 1) messageSendInt(state);
-      break;      
-    case 'l': // WRITE a led pin
-    case '5':
-      //if (nEcho == 1) messageSendChar('L'); // Echo what is being read    
-      //state = messageGetInt( ); // Gets the next word as an integer
-      pinMode(nPinLed, OUTPUT); // Sets the state of the pin to an output
-      digitalWrite(nPinLed, state); // Sets the state of the pin HIGH (1) or LOW (0)
-      //if (nEcho == 1) messageSendInt(state);    
-      break;
-    case 'm': // WRITE a motor pin
-    case '6':
-      //if (nEcho == 1) messageSendChar('M'); // Echo what is being read    
-      //state = messageGetInt( ); // Gets the next word as an integer
-      pinMode(nPinMotor, OUTPUT); // Sets the state of the pin to an output
-      digitalWrite(nPinMotor, state); // Sets the state of the pin HIGH (1) or LOW (0)
-      //if (nEcho == 1) messageSendInt(state);
-      break; 
-    case 'r': // WRITE a led red pin
-    case '7':
-      //if (nEcho == 1) messageSendChar('R'); // Echo what is being read    
-      //state = messageGetInt( ); // Gets the next word as an integer
-      pinMode(nPinRed, OUTPUT); // Sets the state of the pin to an output
-      digitalWrite(nPinRed, !state); // Sets the state of the pin HIGH (1) or LOW (0)
-      //if (nEcho == 1) messageSendInt(state);
-      break;    
-    case 'u': // WRITE a led blue pin
-    case '8':
-      //if (nEcho == 1) messageSendChar('U'); // Echo what is being read    
-      //state = messageGetInt( ); // Gets the next word as an integer
-      pinMode(nPinBlue, OUTPUT); // Sets the state of the pin to an output
-      digitalWrite(nPinBlue, !state); // Sets the state of the pin HIGH (1) or LOW (0)
-      //if (nEcho == 1) messageSendInt(state);
-      break;      
-    case 'o': // WRITE a output pin
-    case '9':
-      //if (nEcho == 1) messageSendChar('O'); // Echo what is being read    
-      //pin = messageGetInt( ); // Gets the next word as an integer
-      //state = messageGetInt( ); // Gets the next word as an integer
-      pin = 0;
-      switch (pin) {
-        case 1:
-          pinMode(nPinOutput1, OUTPUT); // Sets the state of the pin to an output
-          digitalWrite(nPinOutput1, state); // Sets the state of the pin HIGH (1) or LOW (0)        
-          break;
-        case 2:
-          pinMode(nPinOutput2, OUTPUT); // Sets the state of the pin to an output
-          digitalWrite(nPinOutput2, state); // Sets the state of the pin HIGH (1) or LOW (0)        
-          break;          
-        case 3:
-          pinMode(nPinOutput3, OUTPUT); // Sets the state of the pin to an output
-          digitalWrite(nPinOutput3, state); // Sets the state of the pin HIGH (1) or LOW (0)        
-          break;          
-        case 4:
-          pinMode(nPinOutput4, OUTPUT); // Sets the state of the pin to an output
-          digitalWrite(nPinOutput4, state); // Sets the state of the pin HIGH (1) or LOW (0)        
-          break;          
-        case 5:
-          pinMode(nPinOutput5, OUTPUT); // Sets the state of the pin to an output
-          digitalWrite(nPinOutput5, state); // Sets the state of the pin HIGH (1) or LOW (0)        
-          break; 
-        case 6:
-          pinMode(nPinLed, OUTPUT);
-          if (nLedState == OFF) {
-            digitalWrite(nPinLed, HIGH); nLedState = ON;
-          } 
-          else {
-            digitalWrite(nPinLed, LOW); nLedState = OFF;
-          }       
-        default:
-          break;
-      }    
-      break;            
-    default: break;  
+void execIncrement(void)
+{
+  if (nRegistre == ON) {
+    nAcc++; nMemory[CASEREGACC] = nAcc;
+  }
+}
+
+void execDecrement(void)
+{
+  if (nRegistre == ON) {
+    nAcc--; nMemory[CASEREGACC] = nAcc;
   }
 }
 
 void help(void)
 {
   altSerial.println("");
-  altSerial.println("Teensy Micro4");
+  altSerial.println("Teensy Micro4 V0.7");
   altSerial.println("");  
-  altSerial.println("h . -> help (3 .)");
-  altSerial.println("e [value] . -> echo off or on (2 v .)"); 
-  altSerial.println("p . -> prompt (4 .)");
-  altSerial.println("r a . -> read analog pin 14 (5 1 .)");
-  altSerial.println("r b . -> read button pin 11 (5 2 .)");
-  altSerial.println("r d . -> read digital pins (5 3 .)");
-  //Serial.println("r l . -> read light sensor pin 16 (5 5 .)");
-  altSerial.println("r s . -> read switch pin 12 (5 7 .)");
-  //Serial.println("r t . -> read temperature sensor pin 15 (5 8 .)");
-  //Serial.println("t . -> test board (6 .)");
-  altSerial.println("v . -> version firmware (7 .)");
-  altSerial.println("w c . -> write count 1 to 9 (8 0 .)");
-  //Serial.println("w a [pin] [value] . -> write analog pin 14 (8 1 v .)");  
-  altSerial.println("w b [value] . -> write buzzer pin 6 (8 2 v .)");
-  altSerial.println("w d [pin] [value] . -> write digital pin (8 3 p v .)");
-  altSerial.println("w g [value] . -> write led green pin 10 (8 4 v .)");
-  altSerial.println("w l [value] . -> write led board pin 13 (8 5 v .)");
-  //Serial.println("w m [value] . -> write motor pin 7 (8 6 v .)");
-  altSerial.println("w r [value] . -> write led red pin 8 (8 7 v .)");
-  altSerial.println("w u [value] . -> write led blue pin 9 (8 8 v .)");
-  altSerial.println("w o [out] [value] . -> write output pin 19-23 (8 9 o v .)");
-  altSerial.println("l . -> led board toggle pin 13 (9 .)"); 
-  altSerial.println("");  
-  altSerial.println("p or pin = 1-15, o or out = 1-6, v or value = 0 or 1");
-  //altSerial.print("baud rate = "); messageSendInt(nBaud);
+  altSerial.println("<h00> -> help");
+  altSerial.println("<cxx> -> echo off or on"); 
+  altSerial.println("<rxx> -> read input");
+  altSerial.println("<txx> -> test board");
+  altSerial.println("<v00> -> version firmware");
+  altSerial.println("<wxx> -> write output");
+  altSerial.println("<lxx> -> led board toggle"); 
   altSerial.println("");  altSerial.print('>');
 }
 
@@ -502,13 +436,69 @@ void clearMemory(void)
 {
   int i = 0;
   for (i = 0; i < MAXMEM; i++) {
-    nMemory[i] = i & 0x0F;
+    nMemory[i] = 0 & 0x0F;
   }
+}
+
+void displayStep(void)
+{
+  int j = 0, l = 0;
+  altSerial.println("X Y A F I O 0 1 2 3 4 5 6 7 8 9 M N P");  
+  for (j = 0; j < 0x10; j++) {
+    l = nMemory[0xF0 + j];
+    if (l < 0x0A) altSerial.print(l);
+    else {
+      switch (l) {
+        case 10: altSerial.print('A'); break;
+        case 11: altSerial.print('B'); break;
+        case 12: altSerial.print('C'); break;
+        case 13: altSerial.print('D'); break;
+        case 14: altSerial.print('E'); break;
+        case 15: altSerial.print('F'); break;
+        default: break;
+      }         
+    }
+    altSerial.print(' ');
+  }
+  if (nDirect == ON) altSerial.print('d');
+  if (nMemoire == ON) altSerial.print('m');
+  if (nRegistre == ON) altSerial.print('r');
+  altSerial.print(' ');
+  if (nPage < 0x0A) altSerial.print(nPage);
+  else {
+    switch (nPage) {
+        case 10: altSerial.print('A'); break;
+        case 11: altSerial.print('B'); break;
+        case 12: altSerial.print('C'); break;
+        case 13: altSerial.print('D'); break;
+        case 14: altSerial.print('E'); break;
+        case 15: altSerial.print('F'); break;
+        default: break;
+    }
+  }  
+  altSerial.print(" ");
+  if (nPc < 0x0A) altSerial.print(nPc);
+  else {
+    switch (nPc) {
+        case 10: altSerial.print('A'); break;
+        case 11: altSerial.print('B'); break;
+        case 12: altSerial.print('C'); break;
+        case 13: altSerial.print('D'); break;
+        case 14: altSerial.print('E'); break;
+        case 15: altSerial.print('F'); break;
+        default: break;
+    }
+  }
+  altSerial.println("");
 }
 
 void displayRegister(void)
 {
-  altSerial.print("Page: "); 
+  altSerial.print("Mode: ");  
+  if (nDirect == ON) altSerial.print('d');
+  if (nMemoire == ON) altSerial.print('m');
+  if (nRegistre == ON) altSerial.print('r');
+  altSerial.print(" Page: "); 
   if (nPage < 0x0A) altSerial.print(nPage);
   else {
     switch (nPage) {
@@ -561,19 +551,46 @@ void displayMemory(void)
       l = nMemory[k + j];
       if (l < 0x0A) altSerial.print(l);
       else {
-      switch (l) {
-        case 10: altSerial.print('A'); break;
-        case 11: altSerial.print('B'); break;
-        case 12: altSerial.print('C'); break;
-        case 13: altSerial.print('D'); break;
-        case 14: altSerial.print('E'); break;
-        case 15: altSerial.print('F'); break;
-        default: break;
-      }         
+        switch (l) {
+          case 10: altSerial.print('A'); break;
+          case 11: altSerial.print('B'); break;
+          case 12: altSerial.print('C'); break;
+          case 13: altSerial.print('D'); break;
+          case 14: altSerial.print('E'); break;
+          case 15: altSerial.print('F'); break;
+          default: break;
+        }         
       }
       altSerial.print(' ');
     }
     altSerial.println("");
   }
+  altSerial.println("   X Y A F O I 0 1 2 3 4 5 6 7 8 9");
+}
+
+void readpins(void)
+{ // Read pins (analog or digital)
+  //messageSendInt(analogRead(nPinAnalog));
+  //messageSendInt(digitalRead(nPinButton));
+}
+
+void writepin(void) 
+{ // Write pin
+  //digitalWrite(nPinLed, LOW);
+  //digitalWrite(nPinLed, HIGH); 
+  //pinMode(pin, OUTPUT);
+  //analogWrite(pin, state);
+}
+
+void teston(void)
+{ 
+  while(1) {
+    if (altSerial.available()) {
+      cChar = altSerial.read();
+      altSerial.print(cChar);
+      toggleIn(ledPinIn);
+      toggleOut(ledPinOut);
+    }
+  }  
 }
 
